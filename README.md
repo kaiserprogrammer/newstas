@@ -9,6 +9,12 @@ Data: <user_id> <password>
 2. System hashes password so it is not retrievable
 3. System saves user
 
+Verifying User
+--------------
+Data: <user_id> <password>
+
+1. Validate if hashed password matches password of user
+
 Adding Site
 -----------
 Data: <user_id> <url>
