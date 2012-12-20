@@ -1,5 +1,5 @@
 (defpackage #:newstas
-  (:use #:cl :fiveam))
+  (:use #:cl #:fiveam))
 
 (in-package :newstas)
 
@@ -25,6 +25,8 @@
           :accessor sites)
    (notifications :initform (list)
                   :accessor notifications)))
+
+(defvar *db*)
 
 (defvar *data-retriever*
   (lambda (url)
@@ -58,8 +60,6 @@
 
 (defun db-add-site (site db)
   (setf (gethash (url site) (sites db)) site))
-
-(defvar *db*)
 
 (defun add-user (id password &optional (db *db*))
   (let ((user (make-instance 'user
