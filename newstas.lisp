@@ -1,5 +1,18 @@
 (defpackage #:newstas
-  (:use #:cl #:fiveam))
+  (:use #:cl #:fiveam)
+  (:export
+   :memory-db
+   :*db*
+   :*data-retriever*
+   :*hasher*
+   :*checker*
+   :add-user
+   :verify-user
+   :add-site
+   :news-for
+   :check-site
+   :get-notifications
+   :*content-filter*))
 
 (in-package :newstas)
 
@@ -28,16 +41,25 @@
 
 (defvar *db*)
 
-(defvar *data-retriever*
+(defparameter *content-filter*
+  (lambda (content)
+    (let ((content-length (length content)))
+      (subseq content
+              (or (cl-ppcre:scan "<body>" content)
+                  0)
+              (or (cl-ppcre:scan "(</body>|</html>)" content :end content-length)
+                  content-length)))))
+
+(defparameter *data-retriever*
   (lambda (url)
     (drakma:http-request url)))
 
-(defvar *hasher*
+(defparameter *hasher*
   (lambda (password)
     (ironclad:pbkdf2-hash-password-to-combined-string
      (ironclad:ascii-string-to-byte-array password))))
 
-(defvar *checker*
+(defparameter *checker*
   (lambda (hash password)
     (ironclad:pbkdf2-check-password
      (ironclad:ascii-string-to-byte-array password)
@@ -96,7 +118,8 @@
 (defun check-site (url &optional (db *db*))
   (let* ((site (db-get-site url db))
          (new-contents (funcall *data-retriever* (url site))))
-    (unless (string= new-contents (contents site))
+    (unless (string= (funcall *content-filter* new-contents)
+                     (funcall *content-filter* (contents site)))
       (setf (contents site) new-contents)
       (notify-users site))))
 

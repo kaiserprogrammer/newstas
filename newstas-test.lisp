@@ -101,4 +101,19 @@
       (is (not (null note)))
       (is (string= "url" note)))))
 
+(test content-filter
+  (let ((*db* (make-instance 'memory-db)))
+    (add-user "blub" "secret")
+    (let ((*data-retriever*
+           (lambda (url)
+             (declare (ignore url))
+             "<html><meta>changingAB</meta><body>same_content")))
+      (add-site "blub" "url"))
+    (let ((*data-retriever*
+           (lambda (url)
+             (declare (ignore url))
+             "<html><meta>changingBA</meta><body>same_content")))
+      (check-site "url"))
+    (is (null (get-notifications "blub")))))
+
 (run!)
