@@ -116,4 +116,35 @@
       (check-site "url"))
     (is (null (get-notifications "blub")))))
 
+(test clearing-notifications
+  (let ((*db* (make-instance 'memory-db)))
+    (add-user "blub" "secret")
+    (let ((*data-retriever*
+           (lambda (url)
+             (declare (ignore url))
+             "not changed")))
+      (add-site "blub" "url"))
+    (let ((*data-retriever*
+           (lambda (url)
+             (declare (ignore url))
+             "changed")))
+      (check-site "url"))
+    (clear-notifications "blub")
+    (is (null (get-notifications "blub")))))
+
+(test clearing-one-notification
+  (let ((*db* (make-instance 'memory-db)))
+    (add-user "blub" "secret")
+    (let ((*data-retriever*
+           (lambda (url)
+             (declare (ignore url))
+             "not changed")))
+      (add-site "blub" "url")
+      (add-site "blub" "url2"))
+    (let ((*data-retriever*
+           (lambda (url) url)))
+      (news-for "blub"))
+    (clear-notification "blub" "url")
+    (is (equal (list "url2") (get-notifications "blub")))))
+
 (run!)

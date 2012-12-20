@@ -12,7 +12,9 @@
    :news-for
    :check-site
    :get-notifications
-   :*content-filter*))
+   :*content-filter*
+   :clear-notifications
+   :clear-notification))
 
 (in-package :newstas)
 
@@ -127,3 +129,9 @@
   (let ((user (db-get-user id db)))
     (notifications user)))
 
+(defun clear-notifications (id &optional (db *db*))
+  (setf (notifications (db-get-user id db)) (list)))
+
+(defun clear-notification (id url &optional (db *db*))
+  (setf (notifications (db-get-user id db))
+        (remove url (notifications (db-get-user id db)) :test #'string=)))
