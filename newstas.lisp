@@ -5,29 +5,59 @@
 
 (defclass memory-db ()
   ((users :initform (make-hash-table :test #'equal)
+          :accessor users)
+   (sites :initform (make-hash-table :test #'equal)
+          :accessor sites)))
+
+(defclass site ()
+  ((url :initarg :url
+        :reader url)
+   (contents :accessor contents)
+   (users :initform (list)
           :accessor users)))
 
 (defclass user ()
   ((id :initarg :id
-       :accessor id)
+       :reader id)
    (password :initarg :password
-             :reader password)))
+             :reader password)
+   (sites :initform (list)
+          :accessor sites)
+   (notifications :initform (list)
+                  :accessor notifications)))
 
-(defun hash-password (password)
-  (ironclad:pbkdf2-hash-password-to-combined-string
-   (ironclad:ascii-string-to-byte-array password)))
+(defvar *data-retriever*
+  (lambda (url)
+    (drakma:http-request url)))
+
+(defvar *hasher*
+  (lambda (password)
+    (ironclad:pbkdf2-hash-password-to-combined-string
+     (ironclad:ascii-string-to-byte-array password))))
+
+(defvar *checker*
+  (lambda (hash password)
+    (ironclad:pbkdf2-check-password
+     (ironclad:ascii-string-to-byte-array password)
+     hash)))
 
 (defmethod (setf password) (pw (user user))
-  (setf (slot-value user 'password) (hash-password pw)))
+  (setf (slot-value user 'password) (funcall *hasher* pw)))
 
 (defmethod initialize-instance :after ((u user) &key)
   (setf (password u) (password u)))
 
-(defun db-get-user (id &optional (db *db*))
+(defun db-get-user (id db)
   (gethash id (users db)))
 
-(defun db-add-user (user &optional (db *db*))
+(defun db-add-user (user db)
   (setf (gethash (id user) (users db)) user))
+
+(defun db-get-site (url db)
+  (gethash url (sites db)))
+
+(defun db-add-site (site db)
+  (setf (gethash (url site) (sites db)) site))
 
 (defvar *db*)
 
@@ -38,25 +68,39 @@
     (db-add-user user db)))
 
 (defun verify-user (id password &optional (db *db*))
-  (check-password (password (db-get-user id db)) password))
+  (funcall *checker* (password (db-get-user id db)) password))
 
-(defun check-password (hash password)
-  (ironclad:pbkdf2-check-password (ironclad:ascii-string-to-byte-array password) hash))
+(defun add-site (id url &optional (db *db*))
+  (let ((contents (funcall *data-retriever* url)))
+    (when contents
+      (let ((site (make-instance 'site
+                                 :url url))
+            (user (db-get-user id db)))
+        (push site (sites user))
+        (push user (users site))
+        (db-add-site site db)
+        (setf (contents site) contents)))))
 
-(def-suite newstas)
-(in-suite newstas)
+(defun notify-users (site)
+  (loop for user in (users site)
+     do (notify-user user (url site))))
 
-(test adding-a-user
-  (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
-    (let ((user (db-get-user "blub")))
-      (is (not (null user)))
-      (is (string= "blub" (id user)))
-      (is (not (string= "secret" (password user)))))))
+(defun notify-user (user url)
+  (push url (notifications user)))
 
-(test verifying-password
-  (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
-    (is-true (verify-user "blub" "secret"))))
+(defun news-for (id &optional (db *db*))
+  (mapcar
+   (lambda (site) (check-site (url site) db))
+   (sites (db-get-user id db))))
 
-(run!)
+(defun check-site (url &optional (db *db*))
+  (let* ((site (db-get-site url db))
+         (new-contents (funcall *data-retriever* (url site))))
+    (unless (string= new-contents (contents site))
+      (setf (contents site) new-contents)
+      (notify-users site))))
+
+(defun get-notifications (id &optional (db *db*))
+  (let ((user (db-get-user id db)))
+    (notifications user)))
+
