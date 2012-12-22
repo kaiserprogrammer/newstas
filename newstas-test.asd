@@ -6,4 +6,5 @@
   :licence "GPL"
   :depends-on (newstas)
   :serial t
-  :components ((:file "newstas-test")))
+  :components ((:file "newstas-test")
+               (:file "durable-test")))

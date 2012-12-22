@@ -107,12 +107,12 @@
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
-             "<html><meta>changingAB</meta><body>same_content")))
+             "<html><meta>changingAB</meta><body id=\"blub\">same_content")))
       (add-site "blub" "url"))
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
-             "<html><meta>changingBA</meta><body>same_content")))
+             "<html><meta>changingBA</meta><body id=\"blub\">same_content")))
       (check-site "url"))
     (is (null (get-notifications "blub")))))
 

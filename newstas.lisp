@@ -18,12 +18,6 @@
 
 (in-package :newstas)
 
-(defclass memory-db ()
-  ((users :initform (make-hash-table :test #'equal)
-          :accessor users)
-   (sites :initform (make-hash-table :test #'equal)
-          :accessor sites)))
-
 (defclass site ()
   ((url :initarg :url
         :reader url)
@@ -47,9 +41,9 @@
   (lambda (content)
     (let ((content-length (length content)))
       (subseq content
-              (or (cl-ppcre:scan "<body>" content)
+              (or (cl-ppcre:scan "<body" content)
                   0)
-              (or (cl-ppcre:scan "(</body>|</html>)" content :end content-length)
+              (or (cl-ppcre:scan "(</body|</html>)" content :end content-length)
                   content-length)))))
 
 (defparameter *data-retriever*
@@ -71,19 +65,8 @@
   (setf (slot-value user 'password) (funcall *hasher* pw)))
 
 (defmethod initialize-instance :after ((u user) &key)
-  (setf (password u) (password u)))
-
-(defun db-get-user (id db)
-  (gethash id (users db)))
-
-(defun db-add-user (user db)
-  (setf (gethash (id user) (users db)) user))
-
-(defun db-get-site (url db)
-  (gethash url (sites db)))
-
-(defun db-add-site (site db)
-  (setf (gethash (url site) (sites db)) site))
+  (when (slot-boundp u 'password)
+    (setf (password u) (password u))))
 
 (defun add-user (id password &optional (db *db*))
   (let ((user (make-instance 'user
@@ -102,8 +85,8 @@
             (user (db-get-user id db)))
         (push site (sites user))
         (push user (users site))
-        (db-add-site site db)
-        (setf (contents site) contents)))))
+        (setf (contents site) contents)
+        (db-add-site site db)))))
 
 (defun notify-users (site)
   (loop for user in (users site)
@@ -123,15 +106,18 @@
     (unless (string= (funcall *content-filter* new-contents)
                      (funcall *content-filter* (contents site)))
       (setf (contents site) new-contents)
-      (notify-users site))))
+      (notify-users site)
+      (db-save-notifications (users site) url db))))
 
 (defun get-notifications (id &optional (db *db*))
   (let ((user (db-get-user id db)))
     (notifications user)))
 
 (defun clear-notifications (id &optional (db *db*))
-  (setf (notifications (db-get-user id db)) (list)))
+  (setf (notifications (db-get-user id db)) (list))
+  (db-clear-notifications id db))
 
 (defun clear-notification (id url &optional (db *db*))
   (setf (notifications (db-get-user id db))
-        (remove url (notifications (db-get-user id db)) :test #'string=)))
+        (remove url (notifications (db-get-user id db)) :test #'string=))
+  (db-clear-notification id url db))
