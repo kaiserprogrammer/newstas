@@ -14,7 +14,9 @@
    :get-notifications
    :*content-filter*
    :clear-notifications
-   :clear-notification))
+   :clear-notification
+   :durable-db
+   :with-durable-db))
 
 (in-package :newstas)
 
