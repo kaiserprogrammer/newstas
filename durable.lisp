@@ -5,19 +5,23 @@
 
 (defmethod initialize-instance :after ((db durable-db) &key)
   (setf (slot-value db 'connection)
-        (dbi:connect :sqlite3 :database-name "test.db")))
+        (dbi:connect :postgres
+                     :database-name (sb-posix:getenv "NEWSTASDB_NAME")
+                     :username (sb-posix:getenv "NEWSTASDB_USER")
+                     :password (sb-posix:getenv "NEWSTASDB_PASSWORD")
+                     :host (or (sb-posix:getenv "NEWSTASDB_HOST") :unix))))
 
 (defmethod db-save-notifications (users url (db durable-db))
   (dolist (user users)
-    (dbi:fetch (dbi:execute (dbi:prepare (connection db) "insert into user_notifications values (?, ?)")
-                            (id user)
-                            url))))
+    (dbi:execute (dbi:prepare (connection db) "insert into user_notifications values (?, ?)")
+                 (id user)
+                 url)))
 
 (defmethod db-add-site ((site site) (db durable-db))
   (let ((query (dbi:prepare (connection db) "insert into sites values (?, ?)"))
         (user-site-query (dbi:prepare (connection db) "insert into user_site values (?, ?)")))
-    (dbi:fetch (dbi:execute query (url site) (contents site)))
-    (dbi:fetch (dbi:execute user-site-query (id (car (users site))) (url site)))))
+    (dbi:execute query (url site) (contents site))
+    (dbi:execute user-site-query (id (car (users site))) (url site))))
 
 (defmethod db-get-site (url (db durable-db))
   (let ((s (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from sites where url = ?")
@@ -37,7 +41,7 @@
 
 (defmethod db-add-user ((user user) (db durable-db))
   (let ((query (dbi:prepare (connection db) "insert into users values (?, ?)")))
-    (dbi:fetch (dbi:execute query (id user) (password user)))))
+    (dbi:execute query (id user) (password user))))
 
 (defmethod db-get-user (id (db durable-db))
   (let* ((u (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from users where id = ?") id)))
@@ -59,12 +63,12 @@
     user))
 
 (defmethod db-clear-notifications (id (db durable-db))
-  (dbi:fetch (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ?")
-                          id)))
+  (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ?")
+               id))
 
 (defmethod db-clear-notification (id url (db durable-db))
-  (dbi:fetch (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ? and url = ?")
-                          id url)))
+  (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ? and url = ?")
+               id url))
 
 (defmethod drop-tables ((db durable-db))
   (ignore-errors (dbi:do-sql (connection db) "drop table users"))
