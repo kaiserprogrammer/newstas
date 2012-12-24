@@ -19,12 +19,16 @@
     (let ((*data-retriever*
            (lambda (url) (declare (ignore url))
               "content")))
-      (add-site "blub" "http://example.com")))
+      (add-site "blub" "http://example.com"))
+    (let ((*data-retriever*
+           (lambda (url) (declare (ignore url))
+              "new-content")))
+      (check-site "http://example.com")))
   (with-durable-db (*db*)
     (let ((site (db-get-site "http://example.com" *db*)))
       (is (not (null site)))
       (is (string= "http://example.com" (url site)))
-      (is (string= "content" (contents site)))
+      (is (string= "new-content" (contents site)))
       (is (not (null (users site)))))))
 
 (test persisting-notifications

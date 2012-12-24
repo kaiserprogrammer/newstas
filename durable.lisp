@@ -13,9 +13,12 @@
 
 (defmethod db-save-notifications (user (db durable-db))
   (dolist (url (notifications user))
-    (dbi:execute (dbi:prepare (connection db) "insert into user_notifications values (?, ?)")
-                 (id user)
-                 url)))
+    (when (not (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from user_notifications where id = ? and url = ?")
+                                    (id user)
+                                    url)))
+      (dbi:execute (dbi:prepare (connection db) "insert into user_notifications values (?, ?)")
+                   (id user)
+                   url))))
 
 (defmethod db-add-site ((site site) (db durable-db))
   (let ((query (dbi:prepare (connection db) "insert into sites values (?, ?)"))
@@ -36,6 +39,12 @@
          do (let ((user (db-get-user (getf row :|id|) db)))
               (push user (users site))))
       site)))
+
+(defmethod db-update-site ((site site) (db durable-db))
+  (dbi:execute (dbi:prepare (connection db) "update sites set contents=? where url = ?")
+               (contents site)
+               (url site)))
+
 
 (defmethod db-add-user ((user user) (db durable-db))
   (let ((query (dbi:prepare (connection db) "insert into users values (?, ?)")))
@@ -112,3 +121,4 @@
      (unwind-protect
           (progn ,@body)
        (dbi:disconnect (connection ,var)))))
+

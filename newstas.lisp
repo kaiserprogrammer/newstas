@@ -122,6 +122,7 @@
       (let ((old (contents site)))
         (setf (contents site) new-contents)
         (notify-users (users site) (url site) old (contents site))
+        (db-update-site site db)
         (mapcar (lambda (user) (db-save-notifications user db)) (users site))))))
 
 (defun get-notifications (id &optional (db *db*))

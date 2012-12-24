@@ -25,3 +25,5 @@
 (defmethod db-clear-notifications (id (db memory-db)))
 
 (defmethod db-save-filters (id (db memory-db)))
+
+(defmethod db-update-site (site (db memory-db)))

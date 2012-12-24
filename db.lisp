@@ -15,3 +15,5 @@
 (defgeneric db-clear-notifications (id db))
 
 (defgeneric db-save-filters (user db))
+
+(defgeneric db-update-site (site db))
