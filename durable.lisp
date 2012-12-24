@@ -11,8 +11,8 @@
                      :password (sb-posix:getenv "NEWSTASDB_PASSWORD")
                      :host (or (sb-posix:getenv "NEWSTASDB_HOST") :unix))))
 
-(defmethod db-save-notifications (users url (db durable-db))
-  (dolist (user users)
+(defmethod db-save-notifications (user (db durable-db))
+  (dolist (url (notifications user))
     (dbi:execute (dbi:prepare (connection db) "insert into user_notifications values (?, ?)")
                  (id user)
                  url)))
@@ -33,9 +33,7 @@
       (setf (contents site) (getf s :|contents|))
       (loop for row = (dbi:fetch users-result)
          while row
-         do (let ((user (make-instance 'user
-                                       :id (getf row :|id|))))
-              (setf (slot-value user 'password) (getf row :|password|))
+         do (let ((user (db-get-user (getf row :|id|) db)))
               (push user (users site))))
       site)))
 
@@ -60,6 +58,13 @@
          while row
          do (push (getf row :|url|)
                   (notifications user))))
+    (let ((filter-result (dbi:execute (dbi:prepare (connection db) "select * from filters where id = ?") id)))
+      (loop for row = (dbi:fetch filter-result)
+         while row
+         do (setf (gethash (getf row :|url|) (filters user))
+                  (make-instance 'content-filter-include
+                                 :from (getf row :|filter_from|)
+                                 :to (getf row :|filter_to|)))))
     user))
 
 (defmethod db-clear-notifications (id (db durable-db))
@@ -70,17 +75,33 @@
   (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ? and url = ?")
                id url))
 
+(defmethod db-save-filters (user (db durable-db))
+  (maphash
+   (lambda (url filter)
+     (dbi:execute (dbi:prepare (connection db) "insert into filters values (?, ?, ?, ?, ?)")
+                  (id user)
+                  url
+                  (filter-type filter db)
+                  (from filter)
+                  (to filter)))
+   (filters user)))
+
+(defmethod filter-type ((f content-filter-include) (db durable-db))
+  "include")
+
 (defmethod drop-tables ((db durable-db))
   (ignore-errors (dbi:do-sql (connection db) "drop table users"))
   (ignore-errors (dbi:do-sql (connection db) "drop table sites"))
   (ignore-errors (dbi:do-sql (connection db) "drop table user_site"))
-  (ignore-errors (dbi:do-sql (connection db) "drop table user_notifications")))
+  (ignore-errors (dbi:do-sql (connection db) "drop table user_notifications"))
+  (ignore-errors (dbi:do-sql (connection db) "drop table filters")))
 
 (defmethod create-tables ((db durable-db))
   (dbi:do-sql (connection db) "create table users (id varchar(50), password varchar(255), primary key (id))")
   (dbi:do-sql (connection db) "create table sites (url varchar(255), contents text, primary key (url))")
   (dbi:do-sql (connection db) "create table user_site (id varchar(50), url varchar(255))")
-  (dbi:do-sql (connection db) "create table user_notifications (id varchar(50), url varchar(255))"))
+  (dbi:do-sql (connection db) "create table user_notifications (id varchar(50), url varchar(255))")
+  (dbi:do-sql (connection db) "create table filters (id varchar(50), url varchar(255), filter_type varchar(255), filter_from varchar(255), filter_to varchar(255))"))
 
 (defmethod recreate-tables ((db durable-db))
   (drop-tables db)

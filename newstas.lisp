@@ -35,7 +35,15 @@
    (sites :initform (list)
           :accessor sites)
    (notifications :initform (list)
-                  :accessor notifications)))
+                  :accessor notifications)
+   (filters :initform (make-hash-table :test #'equalp)
+            :accessor filters)))
+
+(defclass content-filter-include ()
+  ((from :initarg :from
+         :reader from)
+   (to :initarg :to
+       :reader to)))
 
 (defvar *db*)
 
@@ -90,12 +98,16 @@
         (setf (contents site) contents)
         (db-add-site site db)))))
 
-(defun notify-users (site)
-  (loop for user in (users site)
-     do (notify-user user (url site))))
+(defun notify-users (users url old new)
+  (loop for user in users
+     do (notify-user user url old new)))
 
-(defun notify-user (user url)
-  (push url (notifications user)))
+(defun notify-user (user url old new)
+  (let ((filter (gethash url (filters user))))
+    (let ((old (apply-filter filter old))
+          (new (apply-filter filter new)))
+      (unless (string= old new)
+        (push url (notifications user))))))
 
 (defun news-for (id &optional (db *db*))
   (mapcar
@@ -107,9 +119,10 @@
          (new-contents (funcall *data-retriever* (url site))))
     (unless (string= (funcall *content-filter* new-contents)
                      (funcall *content-filter* (contents site)))
-      (setf (contents site) new-contents)
-      (notify-users site)
-      (db-save-notifications (users site) url db))))
+      (let ((old (contents site)))
+        (setf (contents site) new-contents)
+        (notify-users (users site) (url site) old (contents site))
+        (mapcar (lambda (user) (db-save-notifications user db)) (users site))))))
 
 (defun get-notifications (id &optional (db *db*))
   (let ((user (db-get-user id db)))
@@ -123,3 +136,22 @@
   (setf (notifications (db-get-user id db))
         (remove url (notifications (db-get-user id db)) :test #'string=))
   (db-clear-notification id url db))
+
+(defun add-content-filter-include (id url &key (db *db*) from to)
+  (let ((user (db-get-user id db)))
+   (setf (gethash url (filters user))
+         (make-instance 'content-filter-include
+                        :from from
+                        :to to))
+    (db-save-filters user db)))
+
+(defgeneric apply-filter (filter content))
+(defmethod apply-filter ((f (eql nil)) content)
+  content)
+
+(defmethod apply-filter ((f content-filter-include) content)
+  (let* ((start (cl-ppcre:scan (from f) content))
+         (end (cl-ppcre:scan (to f) content :start start)))
+    (subseq content
+            start
+            end)))

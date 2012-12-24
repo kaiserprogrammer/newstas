@@ -18,8 +18,10 @@
 (defmethod db-add-site ((site site) (db memory-db))
   (setf (gethash (url site) (sites db)) site))
 
-(defmethod db-save-notifications (users url (db memory-db)))
+(defmethod db-save-notifications (user (db memory-db)))
 
 (defmethod db-clear-notification (id url (db memory-db)))
 
 (defmethod db-clear-notifications (id (db memory-db)))
+
+(defmethod db-save-filters (id (db memory-db)))

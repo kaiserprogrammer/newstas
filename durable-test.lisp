@@ -60,4 +60,22 @@
     (is (equal (list "http://blub.com")
                (notifications (db-get-user "blub" *db*))))))
 
+(test persisting-filters
+  (with-durable-db (*db*)
+    (recreate-tables *db*)
+    (add-user "blub" "secret")
+    (let ((*data-retriever*
+           (lambda (url) (declare (ignore url))
+              "random /from_here_to_there.blub")))
+      (add-site "blub" "http://example.com"))
+    (add-content-filter-include "blub" "http://example.com"
+                                :from "/"
+                                :to "\\."))
+  (with-durable-db (*db*)
+    (let ((*data-retriever*
+           (lambda (url) (declare (ignore url))
+              "different_but_uninteresting/from_here_to_there.different")))
+      (check-site "http://example.com"))
+    (is (null (notifications (db-get-user "blub" *db*))))))
+
 (run!)

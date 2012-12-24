@@ -8,8 +8,10 @@
 
 (defgeneric db-add-site (site db))
 
-(defgeneric db-save-notifications (users url db))
+(defgeneric db-save-notifications (user db))
 
 (defgeneric db-clear-notification (id url db))
 
 (defgeneric db-clear-notifications (id db))
+
+(defgeneric db-save-filters (user db))

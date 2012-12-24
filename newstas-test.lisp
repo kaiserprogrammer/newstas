@@ -147,4 +147,19 @@
     (clear-notification "blub" "url")
     (is (equal (list "url2") (get-notifications "blub")))))
 
+(test configure-site-for-user-with-different-content-filter
+  (let ((*db* (make-instance 'memory-db)))
+    (add-user "user" "pw")
+    (let ((*data-retriever*
+           (lambda (url) url)))
+      (add-site "user" "http://example.com")
+      (add-content-filter-include "user" "http://example.com" :from "exam" :to "\\.")
+      (check-site "http://example.com"))
+    (is (null (notifications (db-get-user "user" *db*))) "content-filter acted not on previous content")
+    (let ((*data-retriever*
+           (lambda (url) (declare (ignore url))
+              "different://example.different")))
+      (check-site "http://example.com"))
+    (is (null (notifications (db-get-user "user" *db*))) "content-filter included wrong content")))
+
 (run!)
