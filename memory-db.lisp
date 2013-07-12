@@ -1,29 +1,17 @@
 (in-package :newstas)
 
-(defclass memory-db ()
-  ((users :initform (make-hash-table :test #'equal)
-          :accessor users)
-   (sites :initform (make-hash-table :test #'equal)
-          :accessor sites)))
-
-(defmethod db-get-user (id (db memory-db))
-  (gethash id (users db)))
-
-(defmethod db-add-user ((user user) (db memory-db))
-  (setf (gethash (id user) (users db)) user))
-
 (defmethod db-get-site (url (db memory-db))
-  (gethash url (sites db)))
+  (find url (sites db) :test #'string= :key #'url))
 
 (defmethod db-add-site ((site site) (db memory-db))
-  (setf (gethash (url site) (sites db)) site))
+  (push site (sites db)))
 
-(defmethod db-save-notifications (user (db memory-db)))
+(defmethod db-save-notifications ((db memory-db)))
 
-(defmethod db-clear-notification (id url (db memory-db)))
+(defmethod db-clear-notification (url (db memory-db)))
 
-(defmethod db-clear-notifications (id (db memory-db)))
+(defmethod db-clear-notifications ((db memory-db)))
 
-(defmethod db-save-filters (id (db memory-db)))
+(defmethod db-save-filters ((db memory-db)))
 
 (defmethod db-update-site (site (db memory-db)))

@@ -3,30 +3,15 @@
 (def-suite newstas)
 (in-suite newstas)
 
-(test adding-a-user
-  (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
-    (let ((user (db-get-user "blub" *db*)))
-      (is (not (null user)))
-      (is (string= "blub" (id user)))
-      (is (not (string= "secret" (password user)))))))
-
-(test verifying-password
-  (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
-    (is-true (verify-user "blub" "secret"))))
-
 (test adding-a-site
   (let ((*db* (make-instance 'memory-db))
         (url "http://www.example.com"))
-    (add-user "blub" "secret")
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "Fine")))
-      (add-site "blub" url))
-    (let* ((user (db-get-user "blub" *db*))
-           (site (car (sites user))))
+      (add-site url))
+    (let ((site (car (sites *db*))))
       (is (not (null site)))
       (is (eql (db-get-site url *db*)
                site))
@@ -38,128 +23,120 @@
 (test not-adding-a-site
   "when valid data cannot be retrieved"
   (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              nil)))
-      (add-site "blub" "not_valid_url"))
-    (is (null (car (sites (db-get-user "blub" *db*)))))
+      (add-site "not_valid_url"))
+    (is (null (car (sites *db*))))
     (is (null (db-get-site "not_valid_url" *db*)))))
 
 (test news-for
   (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "No Change")))
-      (add-site "blub" "valid_url")
-      (news-for "blub"))
-    (is (null (notifications (db-get-user "blub" *db*))))
+      (add-site "valid_url")
+      (news))
+    (is (null (notifications *db*)))
 
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "Change")))
-      (news-for "blub"))
-    (is (not (null (notifications (db-get-user "blub" *db*)))))))
+      (news))
+    (is (not (null (notifications *db*))))))
 
 (test check-site
   (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "No Change")))
-      (add-site "blub" "valid_url")
+      (add-site "valid_url")
       (check-site "valid_url"))
-    (is (null (notifications (db-get-user "blub" *db*))))
+    (is (null (notifications *db*)))
 
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "Change")))
       (check-site "valid_url"))
-    (is (not (null (notifications (db-get-user "blub" *db*)))))))
+    (is (not (null (notifications *db*))))))
 
 (test getting-notifications
   (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
-    (is (null (get-notifications "blub")))
+    (is (null (get-notifications)))
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "content")))
-      (add-site "blub" "url"))
+      (add-site "url"))
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "new content")))
       (check-site "url"))
-    (let ((note (car (get-notifications "blub"))))
+    (let ((note (car (get-notifications))))
       (is (not (null note)))
       (is (string= "url" note)))))
 
 (test content-filter
   (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "<html><meta>changingAB</meta><body id=\"blub\">same_content")))
-      (add-site "blub" "url"))
+      (add-site "url"))
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "<html><meta>changingBA</meta><body id=\"blub\">same_content")))
       (check-site "url"))
-    (is (null (get-notifications "blub")))))
+    (is (null (get-notifications)))))
 
 (test clearing-notifications
   (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "not changed")))
-      (add-site "blub" "url"))
+      (add-site "url"))
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "changed")))
       (check-site "url"))
-    (clear-notifications "blub")
-    (is (null (get-notifications "blub")))))
+    (clear-notifications)
+    (is (null (get-notifications)))))
 
 (test clearing-one-notification
   (let ((*db* (make-instance 'memory-db)))
-    (add-user "blub" "secret")
     (let ((*data-retriever*
            (lambda (url)
              (declare (ignore url))
              "not changed")))
-      (add-site "blub" "url")
-      (add-site "blub" "url2"))
+      (add-site "url")
+      (add-site "url2"))
     (let ((*data-retriever*
            (lambda (url) url)))
-      (news-for "blub"))
-    (clear-notification "blub" "url")
-    (is (equal (list "url2") (get-notifications "blub")))))
+      (news))
+    (clear-notification "url")
+    (is (equal (list "url2") (get-notifications)))))
 
 (test configure-site-for-user-with-different-content-filter
   (let ((*db* (make-instance 'memory-db)))
-    (add-user "user" "pw")
     (let ((*data-retriever*
            (lambda (url) url)))
-      (add-site "user" "http://example.com")
-      (add-content-filter-include "user" "http://example.com" :from "exam" :to "\\.")
+      (add-site "http://example.com")
+      (add-content-filter-include "http://example.com" :from "exam" :to "\\.")
       (check-site "http://example.com"))
-    (is (null (notifications (db-get-user "user" *db*))) "content-filter acted not on previous content")
+    (is (null (notifications *db*)) "content-filter acted not on previous content")
     (let ((*data-retriever*
            (lambda (url) (declare (ignore url))
               "different://example.different")))
       (check-site "http://example.com"))
-    (is (null (notifications (db-get-user "user" *db*))) "content-filter included wrong content")))
+    (is (null (notifications *db*)) "content-filter included wrong content")))
 
 (run!)
