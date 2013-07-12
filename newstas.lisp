@@ -6,10 +6,8 @@
    :*data-retriever*
    :*hasher*
    :*checker*
-   :add-user
-   :verify-user
    :add-site
-   :news-for
+   :news
    :check-site
    :get-notifications
    :*content-filter*
