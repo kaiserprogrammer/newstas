@@ -1,21 +1,21 @@
 (in-package :newstas)
 
-(defgeneric db-get-site (url db))
+(defgeneric db-get-site (db url))
 
 (defgeneric db-get-sites (db))
 
-(defgeneric db-add-site (site db))
+(defgeneric db-add-site (db site))
 
 (defgeneric db-save-notifications (db))
 
-(defgeneric db-add-notification (url db))
+(defgeneric db-add-notification (db url))
 
 (defgeneric db-get-notifications (db))
 
-(defgeneric db-clear-notification (url db))
+(defgeneric db-clear-notification (db url))
 
 (defgeneric db-clear-all-notifications (db))
 
-(defgeneric db-save-filters (db))
+(defgeneric db-add-filter (db filter))
 
-(defgeneric db-update-site (site db))
+(defgeneric db-update-site (db site))

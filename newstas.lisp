@@ -29,7 +29,9 @@
   ((from :initarg :from
          :reader from)
    (to :initarg :to
-       :reader to)))
+       :reader to)
+   (url :initarg :url
+        :reader url)))
 
 (defvar *db*)
 
@@ -87,11 +89,12 @@
   (db-clear-notification url db))
 
 (defun add-content-filter-include (url &key (db *db*) from to)
-  (setf (gethash url (filters db))
-        (make-instance 'content-filter-include
-                       :from from
-                       :to to))
-  (db-save-filters db))
+  (db-add-filter
+   db
+   (make-instance 'content-filter-include
+                  :from from
+                  :to to
+                  :url url)))
 
 (defgeneric apply-filter (filter content))
 (defmethod apply-filter ((f (eql nil)) content)
