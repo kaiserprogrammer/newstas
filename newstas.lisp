@@ -54,10 +54,10 @@
       (let ((site (make-instance 'site
                                  :url url)))
         (setf (contents site) contents)
-        (db-add-site site db)))))
+        (db-add-site db site)))))
 
 (defun notify (url old new &optional (db *db*))
-  (let ((filter (gethash url (filters db))))
+  (let ((filter (db-get-filter db url)))
     (let ((old (apply-filter filter old))
           (new (apply-filter filter new)))
       (unless (string= old new)
@@ -70,14 +70,13 @@
 
 
 (defun check-site (url &optional (db *db*))
-  (let* ((site (db-get-site url db))
-         (new-contents (funcall *data-retriever* (url site))))
+  (let* ((site (db-get-site db url))
+         (new-contents (funcall *data-retriever* url)))
     (unless (string= (funcall *content-filter* new-contents)
                      (funcall *content-filter* (contents site)))
       (let ((old (contents site)))
-        (setf (contents site) new-contents)
-        (notify (url site) old (contents site) db)
-        (db-update-site site db)))))
+        (notify (url site) old new-contents db)
+        (db-update-site db url new-contents)))))
 
 (defun get-notifications (&optional (db *db*))
   (db-get-notifications db))
@@ -86,7 +85,7 @@
   (db-clear-all-notifications db))
 
 (defun clear-notification (url &optional (db *db*))
-  (db-clear-notification url db))
+  (db-clear-notification db url))
 
 (defun add-content-filter-include (url &key (db *db*) from to)
   (db-add-filter

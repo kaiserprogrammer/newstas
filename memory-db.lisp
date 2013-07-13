@@ -1,7 +1,7 @@
 (in-package :newstas)
 
 (defclass memory-db ()
-  ((sites :initform (list)
+  ((sites :initform (make-hash-table :test #'equalp)
           :accessor sites)
    (notifications :initform (list)
                   :accessor notifications)
@@ -9,13 +9,14 @@
             :accessor filters)))
 
 (defmethod db-get-site ((db memory-db) url)
-  (find url (sites db) :test #'string= :key #'url))
+  (gethash url (sites db)))
 
 (defmethod db-add-site ((db memory-db) (site site))
-  (push site (sites db)))
+  (setf (gethash (url site) (sites db)) site))
 
 (defmethod db-get-sites ((db memory-db))
-  (sites db))
+  (loop for k being the hash-key using (hash-value v) in (sites db)
+     collect v))
 
 (defmethod db-get-notifications ((db memory-db))
   (notifications db))
@@ -35,4 +36,8 @@
 (defmethod db-add-filter ((db memory-db) filter)
   (setf (gethash (url filter) (filters db)) filter))
 
-(defmethod db-update-site ((db memory-db) site))
+(defmethod db-update-site ((db memory-db) url new-content)
+  (setf (contents (gethash url (sites db))) new-content))
+
+(defmethod db-get-filter ((db memory-db) url)
+  (gethash url (filters db)))

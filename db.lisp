@@ -6,6 +6,8 @@
 
 (defgeneric db-add-site (db site))
 
+(defgeneric db-update-site (db url new-content))
+
 (defgeneric db-save-notifications (db))
 
 (defgeneric db-add-notification (db url))
@@ -18,4 +20,4 @@
 
 (defgeneric db-add-filter (db filter))
 
-(defgeneric db-update-site (db site))
+(defgeneric db-get-filter (db url))

@@ -11,9 +11,9 @@
              (declare (ignore url))
              "Fine")))
       (add-site url))
-    (let ((site (car (sites *db*))))
+    (let ((site (gethash url (sites *db*))))
       (is (not (null site)))
-      (is (eql (db-get-site url *db*)
+      (is (eql (db-get-site *db* url)
                site))
       (is (string= url
                    (url site)))
@@ -28,8 +28,7 @@
              (declare (ignore url))
              nil)))
       (add-site "not_valid_url"))
-    (is (null (car (sites *db*))))
-    (is (null (db-get-site "not_valid_url" *db*)))))
+    (is (null (db-get-site *db* "not_valid_url")))))
 
 (test news-for
   (let ((*db* (make-instance 'memory-db)))
