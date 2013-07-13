@@ -25,14 +25,6 @@
    (users :initform (list)
           :accessor users)))
 
-(defclass memory-db ()
-  ((sites :initform (list)
-          :accessor sites)
-   (notifications :initform (list)
-                  :accessor notifications)
-   (filters :initform (make-hash-table :test #'equalp)
-            :accessor filters)))
-
 (defclass content-filter-include ()
   ((from :initarg :from
          :reader from)
@@ -59,7 +51,6 @@
     (when contents
       (let ((site (make-instance 'site
                                  :url url)))
-        (push site (sites db))
         (setf (contents site) contents)
         (db-add-site site db)))))
 
@@ -68,12 +59,12 @@
     (let ((old (apply-filter filter old))
           (new (apply-filter filter new)))
       (unless (string= old new)
-        (push url (notifications db))))))
+        (db-add-notification db url)))))
 
 (defun news (&optional (db *db*))
   (mapcar
    (lambda (site) (check-site (url site) db))
-   (sites db)))
+   (db-get-sites db)))
 
 
 (defun check-site (url &optional (db *db*))
@@ -84,19 +75,15 @@
       (let ((old (contents site)))
         (setf (contents site) new-contents)
         (notify (url site) old (contents site) db)
-        (db-update-site site db)
-        (db-save-notifications db)))))
+        (db-update-site site db)))))
 
 (defun get-notifications (&optional (db *db*))
-  (notifications db))
+  (db-get-notifications db))
 
 (defun clear-notifications (&optional (db *db*))
-  (setf (notifications db) (list))
   (db-clear-notifications db))
 
 (defun clear-notification (url &optional (db *db*))
-  (setf (notifications db)
-        (remove url (notifications db) :test #'string=))
   (db-clear-notification url db))
 
 (defun add-content-filter-include (url &key (db *db*) from to)
