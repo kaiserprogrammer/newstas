@@ -14,7 +14,7 @@
 
 (defgeneric db-clear-notification (url db))
 
-(defgeneric db-clear-notifications (db))
+(defgeneric db-clear-all-notifications (db))
 
 (defgeneric db-save-filters (db))
 

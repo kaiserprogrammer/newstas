@@ -108,7 +108,7 @@
              (declare (ignore url))
              "changed")))
       (check-site "url"))
-    (clear-notifications)
+    (clear-all-notifications)
     (is (null (get-notifications)))))
 
 (test clearing-one-notification

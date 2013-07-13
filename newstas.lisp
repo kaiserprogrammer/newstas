@@ -11,7 +11,7 @@
    :check-site
    :get-notifications
    :*content-filter*
-   :clear-notifications
+   :clear-all-notifications
    :clear-notification
    :durable-db
    :with-durable-db))
@@ -80,8 +80,8 @@
 (defun get-notifications (&optional (db *db*))
   (db-get-notifications db))
 
-(defun clear-notifications (&optional (db *db*))
-  (db-clear-notifications db))
+(defun clear-all-notifications (&optional (db *db*))
+  (db-clear-all-notifications db))
 
 (defun clear-notification (url &optional (db *db*))
   (db-clear-notification url db))

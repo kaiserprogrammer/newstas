@@ -29,7 +29,7 @@
   (setf (notifications db)
         (remove url (notifications db) :test #'string=)))
 
-(defmethod db-clear-notifications ((db memory-db))
+(defmethod db-clear-all-notifications ((db memory-db))
   (setf (notifications db) (list)))
 
 (defmethod db-save-filters ((db memory-db)))
