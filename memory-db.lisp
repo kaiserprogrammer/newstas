@@ -15,7 +15,7 @@
   (setf (gethash (url site) (sites db)) site))
 
 (defmethod db-get-sites ((db memory-db))
-  (loop for k being the hash-key using (hash-value v) in (sites db)
+  (loop for v being the hash-values in (sites db)
      collect v))
 
 (defmethod db-get-notifications ((db memory-db))
