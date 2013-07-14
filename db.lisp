@@ -8,8 +8,6 @@
 
 (defgeneric db-update-site (db url new-content))
 
-(defgeneric db-save-notifications (db))
-
 (defgeneric db-add-notification (db url))
 
 (defgeneric db-get-notifications (db))
