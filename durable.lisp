@@ -1,5 +1,7 @@
 (in-package :newstas)
 
+(defvar *user-id*)
+
 (defclass durable-db ()
   ((connection :accessor connection)))
 
@@ -11,92 +13,64 @@
                      :password (sb-posix:getenv "NEWSTASDB_PASSWORD")
                      :host (or (sb-posix:getenv "NEWSTASDB_HOST") :unix))))
 
-(defmethod db-save-notifications (user (db durable-db))
-  (dolist (url (notifications user))
-    (when (not (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from user_notifications where id = ? and url = ?")
-                                    (id user)
-                                    url)))
-      (dbi:execute (dbi:prepare (connection db) "insert into user_notifications values (?, ?)")
-                   (id user)
-                   url))))
-
-(defmethod db-add-site ((site site) (db durable-db))
+(defmethod db-add-site ((db durable-db) (site site))
   (let ((query (dbi:prepare (connection db) "insert into sites values (?, ?)"))
         (user-site-query (dbi:prepare (connection db) "insert into user_site values (?, ?)")))
     (dbi:execute query (url site) (contents site))
-    (dbi:execute user-site-query (id (car (users site))) (url site))))
+    (dbi:execute user-site-query *user-id* (url site))))
 
-(defmethod db-get-site (url (db durable-db))
+(defmethod db-get-site ((db durable-db) url)
   (let ((s (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from sites where url = ?")
-                                   url)))
-        (users-result (dbi:execute (dbi:prepare (connection db) "select * from users where id in (select id from user_site where url = ?)")
-                                   url)))
+                                   url))))
     (let ((site (make-instance 'site
                                :url (getf s :|url|))))
       (setf (contents site) (getf s :|contents|))
-      (loop for row = (dbi:fetch users-result)
-         while row
-         do (let ((user (db-get-user (getf row :|id|) db)))
-              (push user (users site))))
       site)))
 
-(defmethod db-update-site ((site site) (db durable-db))
+(defmethod db-update-site ((db durable-db) url new-content)
   (dbi:execute (dbi:prepare (connection db) "update sites set contents=? where url = ?")
-               (contents site)
-               (url site)))
+               new-content
+               url))
 
+(defmethod db-add-notification ((db durable-db) url)
+  (dbi:execute (dbi:prepare (connection db) "insert into user_notifications values (?, ?)")
+               *user-id*
+               url))
 
-(defmethod db-add-user ((user user) (db durable-db))
-  (let ((query (dbi:prepare (connection db) "insert into users values (?, ?)")))
-    (dbi:execute query (id user) (password user))))
+(defmethod db-get-notifications ((db durable-db))
+  (let ((s (dbi.driver:fetch-all (dbi:execute (dbi:prepare (connection db) "select url from user_notifications where id = ?")
+                                   *user-id*))))
 
-(defmethod db-get-user (id (db durable-db))
-  (let* ((u (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from users where id = ?") id)))
-         (user (make-instance 'user
-                              :id (getf u :|id|))))
-    (setf (slot-value user 'password) (getf u :|password|))
-    (let ((sites-result (dbi:execute (dbi:prepare (connection db) "select * from sites where url in (select url from user_site where id = ?)") id)))
-      (loop for row = (dbi:fetch sites-result)
-         while row
-         do (let ((site (make-instance 'site
-                                       :url (getf row :|url|))))
-              (setf (contents site) (getf row :|contents|))
-              (push site (sites user)))))
-    (let ((notes-result (dbi:execute (dbi:prepare (connection db) "select * from user_notifications where id = ?") id)))
-      (loop for row = (dbi:fetch notes-result)
-         while row
-         do (push (getf row :|url|)
-                  (notifications user))))
-    (let ((filter-result (dbi:execute (dbi:prepare (connection db) "select * from filters where id = ?") id)))
-      (loop for row = (dbi:fetch filter-result)
-         while row
-         do (setf (gethash (getf row :|url|) (filters user))
-                  (make-instance 'content-filter-include
-                                 :from (getf row :|filter_from|)
-                                 :to (getf row :|filter_to|)))))
-    user))
+    (mapcar (lambda (s) (getf s :|url|)) s)))
 
-(defmethod db-clear-notifications (id (db durable-db))
+(defmethod db-clear-all-notifications ((db durable-db))
   (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ?")
-               id))
+               *user-id*))
 
-(defmethod db-clear-notification (id url (db durable-db))
+(defmethod db-clear-notification ((db durable-db) url)
   (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ? and url = ?")
-               id url))
+               *user-id* url))
 
-(defmethod db-save-filters (user (db durable-db))
-  (maphash
-   (lambda (url filter)
-     (dbi:execute (dbi:prepare (connection db) "insert into filters values (?, ?, ?, ?, ?)")
-                  (id user)
-                  url
-                  (filter-type filter db)
-                  (from filter)
-                  (to filter)))
-   (filters user)))
+(defmethod db-add-filter ((db durable-db) filter)
+  (dbi:execute (dbi:prepare (connection db) "insert into filters values (?, ?, ?, ?, ?)")
+               *user-id*
+               (url filter)
+               (filter-type filter db)
+               (from filter)
+               (to filter)))
+
+(defmethod db-get-filter ((db durable-db) url)
+  (let ((s (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from filters where id = ? and url = ?")
+                                   *user-id*
+                                   url))))
+    (when s
+      (make-instance (intern (string-upcase (getf s :|filter_type|)))
+                     :from (getf s :|filter_from|)
+                     :to (getf s :|filter_to|)
+                     :url (getf s :|url|)))))
 
 (defmethod filter-type ((f content-filter-include) (db durable-db))
-  "include")
+  (format nil "~s" (class-name (class-of f))))
 
 (defmethod drop-tables ((db durable-db))
   (ignore-errors (dbi:do-sql (connection db) "drop table users"))
