@@ -16,8 +16,8 @@
 (defmethod db-add-site ((db durable-db) (site site))
   (let ((query (dbi:prepare (connection db) "insert into sites values (?, ?)"))
         (user-site-query (dbi:prepare (connection db) "insert into user_site values (?, ?)")))
-    (dbi:execute query (url site) (contents site))
-    (dbi:execute user-site-query *user-id* (url site))))
+    (dbi:execute user-site-query *user-id* (url site))
+    (dbi:execute query (url site) (contents site))))
 
 (defmethod db-get-site ((db durable-db) url)
   (let ((s (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from sites where url = ?")
