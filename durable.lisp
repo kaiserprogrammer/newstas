@@ -22,10 +22,17 @@
 (defmethod db-get-site ((db durable-db) url)
   (let ((s (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from sites where url = ?")
                                    url))))
-    (let ((site (make-instance 'site
-                               :url (getf s :|url|))))
-      (setf (contents site) (getf s :|contents|))
-      site)))
+    (when s
+      (let ((site (make-instance 'site
+                                 :url (getf s :|url|))))
+        (setf (contents site) (getf s :|contents|))
+        site))))
+
+(defmethod db-get-sites ((db durable-db))
+  (let ((s (dbi.driver:fetch-all (dbi:execute (dbi:prepare (connection db) "select * from sites")))))
+    (when s (mapcar (lambda (s) (let ((site (make-instance 'site :url (getf s :|url|))))
+                             (setf (contents site) (getf s :|contents|))
+                             site)) s))))
 
 (defmethod db-update-site ((db durable-db) url new-content)
   (dbi:execute (dbi:prepare (connection db) "update sites set contents=? where url = ?")
@@ -39,9 +46,8 @@
 
 (defmethod db-get-notifications ((db durable-db))
   (let ((s (dbi.driver:fetch-all (dbi:execute (dbi:prepare (connection db) "select url from user_notifications where id = ?")
-                                   *user-id*))))
-
-    (mapcar (lambda (s) (getf s :|url|)) s)))
+                                              *user-id*))))
+    (when s (mapcar (lambda (s) (getf s :|url|)) s))))
 
 (defmethod db-clear-all-notifications ((db durable-db))
   (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ?")
