@@ -4,8 +4,6 @@
    :memory-db
    :*db*
    :*data-retriever*
-   :*hasher*
-   :*checker*
    :add-site
    :news
    :check-site
