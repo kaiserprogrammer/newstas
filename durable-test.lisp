@@ -1,6 +1,6 @@
-(in-package :newstas)
+(in-package :newstas-multi-user)
 
-(def-suite durable :in newstas)
+(def-suite durable)
 (in-suite durable)
 
 ;; (test persisting-user
@@ -24,10 +24,10 @@
                "new-content")))
        (check-site "http://example.com")))
     (with-durable-db (*db*)
-      (let ((site (db-get-site *db* "http://example.com")))
+      (let ((site (newstas::db-get-site *db* "http://example.com")))
         (is (not (null site)))
-        (is (string= "http://example.com" (url site)))
-        (is (string= "new-content" (contents site)))))))
+        (is (string= "http://example.com" (newstas::url site)))
+        (is (string= "new-content" (newstas::contents site)))))))
 
 (test persisting-notifications
   (let ((*user-id* 1))
@@ -70,9 +70,9 @@
              (lambda (url) (declare (ignore url))
                 "random /from_here_to_there.blub")))
         (add-site "http://example.com"))
-      (add-content-filter-include "http://example.com"
-                                  :from "/"
-                                  :to "\\."))
+      (newstas::add-content-filter-include "http://example.com"
+                                          :from "/"
+                                          :to "\\."))
     (with-durable-db (*db*)
       (let ((*data-retriever*
              (lambda (url) (declare (ignore url))
@@ -80,4 +80,36 @@
         (check-site "http://example.com"))
       (is (null (get-notifications))))))
 
+(test news-for-multiple-users
+  (with-durable-db (*db*)
+    (recreate-tables *db*)
+    (let ((*data-retriever*
+           (lambda (url) (declare (ignore url))
+              "content")))
+      (let ((*user-id* 1))
+        (add-site "http://example.com"))
+      (let ((*user-id* 2))
+        (add-site "http://different.com")))
+    (let ((*data-retriever*
+           (lambda (url) (declare (ignore url))
+              "new-content")))
+      (news)
+      (let ((*user-id* 1))
+        (is (not (null (get-notifications)))))
+      (let ((*user-id* 2))
+        (is (not (null (get-notifications))))))
+    (let ((*user-id* 1))
+      (clear-all-notifications))
+    (let ((*user-id* 2))
+      (clear-all-notifications))
+    (let ((*data-retriever*
+           (lambda (url)
+             (if (string= url "http://different.com")
+                 "newer-content"
+                 "new-content"))))
+      (news)
+      (let ((*user-id* 1))
+        (is (null (get-notifications))))
+      (let ((*user-id* 2))
+        (is (not (null (get-notifications))))))))
 (run!)

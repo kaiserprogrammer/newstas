@@ -4,11 +4,10 @@
   :maintainer "Jürgen Bickert <juergenbickert@gmail.com>"
   :author "Jürgen Bickert <juergenbickert@gmail.com>"
   :licence "GPL"
-  :depends-on (drakma ironclad fiveam dbi)
+  :depends-on (drakma fiveam)
   :serial t
   ;; components likely need manual reordering
   :components ((:static-file "README.md" :pathname "README.md")
                (:file "newstas")
                (:file "db")
-               (:file "memory-db")
-               (:file "durable")))
+               (:file "memory-db")))

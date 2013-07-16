@@ -1,4 +1,4 @@
-(in-package :newstas)
+(in-package :newstas-multi-user)
 
 (defvar *user-id*)
 
@@ -13,69 +13,69 @@
                      :password (sb-posix:getenv "NEWSTASDB_PASSWORD")
                      :host (or (sb-posix:getenv "NEWSTASDB_HOST") :unix))))
 
-(defmethod db-add-site ((db durable-db) (site site))
+(defmethod newstas::db-add-site ((db durable-db) (site newstas::site))
   (let ((query (dbi:prepare (connection db) "insert into sites values (?, ?)"))
         (user-site-query (dbi:prepare (connection db) "insert into user_site values (?, ?)")))
-    (dbi:execute user-site-query *user-id* (url site))
-    (dbi:execute query (url site) (contents site))))
+    (dbi:execute user-site-query *user-id* (newstas::url site))
+    (dbi:execute query (newstas::url site) (newstas::contents site))))
 
-(defmethod db-get-site ((db durable-db) url)
+(defmethod newstas::db-get-site ((db durable-db) url)
   (let ((s (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from sites where url = ?")
                                    url))))
     (when s
-      (let ((site (make-instance 'site
+      (let ((site (make-instance 'newstas::site
                                  :url (getf s :|url|))))
-        (setf (contents site) (getf s :|contents|))
+        (setf (newstas::contents site) (getf s :|contents|))
         site))))
 
-(defmethod db-get-sites ((db durable-db))
+(defmethod newstas::db-get-sites ((db durable-db))
   (let ((s (dbi.driver:fetch-all (dbi:execute (dbi:prepare (connection db) "select * from sites")))))
-    (when s (mapcar (lambda (s) (let ((site (make-instance 'site :url (getf s :|url|))))
-                             (setf (contents site) (getf s :|contents|))
+    (when s (mapcar (lambda (s) (let ((site (make-instance 'newstas::site :url (getf s :|url|))))
+                             (setf (newstas::contents site) (getf s :|contents|))
                              site)) s))))
 
-(defmethod db-update-site ((db durable-db) url new-content)
+(defmethod newstas::db-update-site ((db durable-db) url new-content)
   (dbi:execute (dbi:prepare (connection db) "update sites set contents=? where url = ?")
                new-content
                url))
 
-(defmethod db-add-notification ((db durable-db) url)
+(defmethod newstas::db-add-notification ((db durable-db) url)
   (dbi:execute (dbi:prepare (connection db) "insert into user_notifications values (?, ?)")
                *user-id*
                url))
 
-(defmethod db-get-notifications ((db durable-db))
+(defmethod newstas::db-get-notifications ((db durable-db))
   (let ((s (dbi.driver:fetch-all (dbi:execute (dbi:prepare (connection db) "select url from user_notifications where id = ?")
                                               *user-id*))))
     (when s (mapcar (lambda (s) (getf s :|url|)) s))))
 
-(defmethod db-clear-all-notifications ((db durable-db))
+(defmethod newstas::db-clear-all-notifications ((db durable-db))
   (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ?")
                *user-id*))
 
-(defmethod db-clear-notification ((db durable-db) url)
+(defmethod newstas::db-clear-notification ((db durable-db) url)
   (dbi:execute (dbi:prepare (connection db) "delete from user_notifications where id = ? and url = ?")
                *user-id* url))
 
-(defmethod db-add-filter ((db durable-db) filter)
+(defmethod newstas::db-add-filter ((db durable-db) filter)
   (dbi:execute (dbi:prepare (connection db) "insert into filters values (?, ?, ?, ?, ?)")
                *user-id*
-               (url filter)
+               (newstas::url filter)
                (filter-type filter db)
-               (from filter)
-               (to filter)))
+               (newstas::from filter)
+               (newstas::to filter)))
 
-(defmethod db-get-filter ((db durable-db) url)
+(defmethod newstas::db-get-filter ((db durable-db) url)
   (let ((s (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select * from filters where id = ? and url = ?")
                                    *user-id*
                                    url))))
     (when s
-      (make-instance (intern (string-upcase (getf s :|filter_type|)))
+      (make-instance (read-from-string (string-upcase (getf s :|filter_type|)))
                      :from (getf s :|filter_from|)
                      :to (getf s :|filter_to|)
                      :url (getf s :|url|)))))
 
-(defmethod filter-type ((f content-filter-include) (db durable-db))
+(defmethod filter-type ((f newstas::content-filter-include) (db durable-db))
   (format nil "~s" (class-name (class-of f))))
 
 (defmethod drop-tables ((db durable-db))
@@ -102,3 +102,8 @@
           (progn ,@body)
        (dbi:disconnect (connection ,var)))))
 
+
+(defmethod db-users-subscribed ((db durable-db) (site newstas::site))
+  (let ((s (dbi.driver:fetch-all (dbi:execute (dbi:prepare (connection db) "select id from user_site where url = ?")
+                                              (newstas::url site)))))
+    (when s (mapcar (lambda (s) (getf s :|id|)) s))))
