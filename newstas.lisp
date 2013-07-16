@@ -54,7 +54,7 @@
         (setf (contents site) contents)
         (db-add-site db site)))))
 
-(defun notify (url old new &optional (db *db*))
+(defun notify (url old new db)
   (let ((filter (db-get-filter db url)))
     (let ((old (apply-filter filter old))
           (new (apply-filter filter new)))
@@ -65,7 +65,6 @@
   (mapcar
    (lambda (site) (check-site (url site) db))
    (db-get-sites db)))
-
 
 (defun check-site (url &optional (db *db*))
   (let* ((site (db-get-site db url))
