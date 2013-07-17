@@ -10,9 +10,7 @@
    :get-notifications
    :*content-filter*
    :clear-all-notifications
-   :clear-notification
-   :durable-db
-   :with-durable-db))
+   :clear-notification))
 
 (in-package :newstas)
 

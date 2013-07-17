@@ -92,6 +92,20 @@
   (dbi:do-sql (connection db) "create table user_notifications (id varchar(50), url varchar(255))")
   (dbi:do-sql (connection db) "create table filters (id varchar(50), url varchar(255), filter_type varchar(255), filter_from varchar(255), filter_to varchar(255))"))
 
+
+(defmethod auser::db-add-user ((db durable-db) (user auser:user))
+  (dbi:do-sql (connection db) "insert into users values (?, ?)"
+               (auser:id user)
+               (auser:password user)))
+
+(defmethod auser::db-get-user ((db durable-db) id)
+  (let ((s (dbi:fetch (dbi:execute (dbi:prepare (connection db) "select password from users where id = ?")
+                                   id))))
+    (when s
+      (make-instance 'auser::user
+                     :id id
+                     :password (getf s :|password|)))))
+
 (defmethod recreate-tables ((db durable-db))
   (drop-tables db)
   (create-tables db))
